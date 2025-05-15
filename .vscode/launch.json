@@ -1,0 +1,26 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+
+    {
+      "name": "Debug Makefile Executable",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/sample_codes/bin/place",   // ← your binary path
+      "args": ["-aux", "benchmark/ibm01/ibm01.aux"], // ← your runtime arguments
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/sample_codes",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "build"
+    }
+  ]
+}

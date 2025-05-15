@@ -13,19 +13,6 @@ GlobalPlacer::GlobalPlacer(Placement &placement)
 }
 
 void GlobalPlacer::place() {
-    // srand(time(null));
-    // double outline_w = abs(_placement.boundryRight() - _placement.boundryLeft());
-    // double outline_h = abs(_placement.boundryTop() - _placement.boundryBottom());
-    // // cout << "outline: (" << _placement.boundryLeft() << "," << _placement.boundryBottom() << ") (" << _placement.boundryRight() << "," << _placement.boundryTop() << ")\n";
-    // // cout << "outline_w=" << outline_w << ", outline_h=" << outline_w << "\n";
-    // for( size_t i = 0; i < _placement.numModules(); ++i ){
-    //     Module &module = _placement.module(i);
-    //     int x = rand() % int(outline_w) + _placement.boundryLeft();
-    //     int y = rand() % int(outline_h) + _placement.boundryBottom();
-    //     module.setPosition(x, y);
-    //     // if(i % 1000 == 0)
-    //     //     cout << "module[" << i << "]: (" << x << "," << y << ")\n";
-    // }
     ////////////////////////////////////////////////////////////////////
     // This section is an example for analytical methods.
     // The objective is to minimize the following function:
@@ -33,31 +20,50 @@ void GlobalPlacer::place() {
     //
     // If you use other methods, you can skip and delete it directly.
     ////////////////////////////////////////////////////////////////////
-    std::vector<Point2<double>> t(1);                   // Optimization variables (in this example, there is only one t)
+    std::vector<Point2<double>> tempPos(_placement.numModules());       
+    // randomly initialize the position of the modules
+    srand(time(0));
+    double outline_w = abs(_placement.boundryRight() - _placement.boundryLeft());
+    double outline_h = abs(_placement.boundryTop() - _placement.boundryBottom());
+    // cout << "outline: (" << _placement.boundryLeft() << "," << _placement.boundryBottom() << ") (" << _placement.boundryRight() << "," << _placement.boundryTop() << ")\n";
+    // cout << "outline_w=" << outline_w << ", outline_h=" << outline_w << "\n";
+    for( size_t i = 0; i < _placement.numModules(); ++i ){
+        Module &module = _placement.module(i);
+        int x = rand() % int(outline_w) + _placement.boundryLeft();
+        int y = rand() % int(outline_h) + _placement.boundryBottom();
+        // module.setPosition(x, y);
+        tempPos[i].x = x;
+        tempPos[i].y = y;
+        // if(i % 1000 == 0)
+        //     cout << "module[" << i << "]: (" << x << "," << y << ")\n";
+    }
+    
+    // // Optimization variables (in this example, there is only one tempPos)
     ExampleFunction foo(_placement);                    // Objective function
     const double kAlpha = 0.01;                         // Constant step size
-    SimpleConjugateGradient optimizer(foo, t, kAlpha);  // Optimizer
+    SimpleConjugateGradient optimizer(foo, tempPos, kAlpha);  // Optimizer
 
-    // Set initial point
-    t[0] = 4.;  // This set both t[0].x and t[0].y to 4.
+    // // Set initial point
+    // tempPos[0] = 4.;  // This set both tempPos[0].x and tempPos[0].y to 4.
 
     // Initialize the optimizer
     optimizer.Initialize();
 
     // Perform optimization, the termination condition is that the number of iterations reaches 100
     // TODO: You may need to change the termination condition, which is determined by the overflow ratio.
-    for (size_t i = 0; i < 100; ++i) {
+    for (size_t i = 0; i < 200; ++i) {
         optimizer.Step();
-        printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(t), t[0].x, t[0].y);
+        printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(tempPos), tempPos[0].x, tempPos[0].y);
     }
 
-    ////////////////////////////////////////////////////////////////////
-    // Global placement algorithm
-    ////////////////////////////////////////////////////////////////////
+
+    // ////////////////////////////////////////////////////////////////////
+    // // Global placement algorithm
+    // ////////////////////////////////////////////////////////////////////
 
     // TODO: Implement your global placement algorithm here.
     const size_t num_modules = _placement.numModules();  // You may modify this line.
-    std::vector<Point2<double>> positions(num_modules);  // Optimization variables (positions of modules). You may modify this line.
+    // std::vector<Point2<double>> positions(num_modules);  // Optimization variables (positions of modules). You may modify this line.
 
     ////////////////////////////////////////////////////////////////////
     // Write the placement result into the database. (You may modify this part.)
@@ -70,7 +76,7 @@ void GlobalPlacer::place() {
             fixed_cnt++;
             continue;
         }
-        _placement.module(i).setPosition(positions[i].x, positions[i].y);
+        _placement.module(i).setPosition(tempPos[i].x, tempPos[i].y);
     }
     printf("INFO: %lu / %lu modules are fixed.\n", fixed_cnt, num_modules);
 }
