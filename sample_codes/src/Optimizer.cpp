@@ -19,7 +19,7 @@ void SimpleConjugateGradient::Initialize() {
 /**
  * @details Update the solution once using the conjugate gradient method.
  */
-void SimpleConjugateGradient::Step() {
+int SimpleConjugateGradient::Step() {
     const size_t &kNumModule = var_.size();
 
     // Compute the gradient direction
@@ -72,4 +72,6 @@ void SimpleConjugateGradient::Step() {
     grad_prev_ = obj_.grad();
     dir_prev_ = dir;
     step_++;
+
+    return 0;
 }
