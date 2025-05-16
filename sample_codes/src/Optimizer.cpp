@@ -78,8 +78,8 @@ int SimpleConjugateGradient::Step() {
     
     // Update the solution
     for (size_t i = 0; i < kNumModule; ++i) {
-        var_[i].x = var_[i].x + x_step_max * dir[i].x;  // Update the variable (solution)
-        var_[i].y = var_[i].y + y_step_max * dir[i].y;
+        var_[i].x = var_[i].x + 2*x_step_max * dir[i].x;  // Update the variable (solution)
+        var_[i].y = var_[i].y + 2*y_step_max * dir[i].y;
     }
 
     // Update the cache for the next iteration

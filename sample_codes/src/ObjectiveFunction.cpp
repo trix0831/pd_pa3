@@ -7,6 +7,7 @@ static constexpr int    kBinX   = 64;   // number of bins in X
 static constexpr int    kBinY   = 64;   // number of bins in Y
 static constexpr double kTarget = 0.85; // target utilisation per bin
 static constexpr double kWeight = 1e3;  // λd – weight of the density term
+static constexpr double kAlpha = 0.01; // α – wirelength scaling factor
 /* ------------------------------------------------------------------------ */
 
 static inline double bell(double u)
@@ -33,12 +34,13 @@ const double &ExampleFunction::operator()(const std::vector<Point2<double>> &inp
     double value_wire = 0.0;
     double value_density = 0.0;
     input_ = input;
-    const double alpha = 1.0;
 
+
+    // Iterate over all nets
     for (unsigned i = 0; i < placement_.numNets(); ++i)
     {
         Net &net = placement_.net(i);
-        std::vector<double> xs, ys;
+        std::vector<double> xs, ys;  // Store x and y coordinates of all pins
 
         for (unsigned j = 0; j < net.numPins(); ++j)
         {
@@ -52,18 +54,23 @@ const double &ExampleFunction::operator()(const std::vector<Point2<double>> &inp
         const double ymax = *std::max_element(ys.begin(), ys.end());
         const double ymin = *std::min_element(ys.begin(), ys.end());
 
-        double sx = 0, sNx = 0, sy = 0, sNy = 0;
+        double sx = 0.0, sNx = 0.0, sy = 0.0, sNy = 0.0;
+
         for (std::size_t k = 0; k < xs.size(); ++k)
         {
-            sx  += std::exp((xs[k] - xmax) / alpha);
-            sNx += std::exp((xmin - xs[k]) / alpha);
-            sy  += std::exp((ys[k] - ymax) / alpha);
-            sNy += std::exp((ymin - ys[k]) / alpha);
+            sx  += std::exp((xs[k] - xmax) / kAlpha);
+            sNx += std::exp((xmin - xs[k]) / kAlpha);
+            sy  += std::exp((ys[k] - ymax) / kAlpha);
+            sNy += std::exp((ymin - ys[k]) / kAlpha);
         }
 
-        value_wire += alpha * (std::log(sx) + xmax / alpha + std::log(sNx) + xmin / alpha);
-        value_wire += alpha * (std::log(sy) + ymax / alpha + std::log(sNy) + ymin / alpha);
+        // Corrected LSE-based wirelength approximation
+        value_wire += kAlpha * std::log(sx)  + xmax;
+        value_wire += kAlpha * std::log(sNx) - xmin;
+        value_wire += kAlpha * std::log(sy)  + ymax;
+        value_wire += kAlpha * std::log(sNy) - ymin;
     }
+
 
     /* ============ 2.  density with bell-shaped kernel ==================== */
 
@@ -143,35 +150,33 @@ const double &ExampleFunction::operator()(const std::vector<Point2<double>> &inp
 
 const std::vector<Point2<double>> &ExampleFunction::Backward()
 {
-    /* ------------------------------------------------------------------ *
-     * 0.  initialise gradient                                             *
-     * ------------------------------------------------------------------ */
+    // ------------------------------------------------------------------
+    // 0.  Initialise gradient
+    // ------------------------------------------------------------------
     grad_.assign(input_.size(), Point2<double>(0.0, 0.0));
     std::vector<Point2<double>> grad_wire_, grad_density_;
     grad_wire_.assign(input_.size(), Point2<double>(0.0, 0.0));
     grad_density_.assign(input_.size(), Point2<double>(0.0, 0.0));
 
-    /* ================================================================== *
-     * 1.  WIRE-LENGTH  (your original code, unchanged)                   *
-     * ================================================================== */
-    const double alpha_wl = 0.01;               //   same value you used
+    // ==================================================================
+    // 1.  WIRELENGTH (LSE)
+    // ==================================================================
     for (unsigned i = 0; i < placement_.numNets(); ++i)
     {
         Net &net = placement_.net(i);
         const unsigned npins = net.numPins();
 
         std::vector<unsigned> mids(npins);
-        std::vector<double>   xs(npins), ys(npins);
+        std::vector<double> xs(npins), ys(npins);
 
         for (unsigned j = 0; j < npins; ++j)
         {
-            Pin &pin   = net.pin(j);
-            mids[j]    = pin.moduleId();
-            xs[j]      = input_[mids[j]].x;
-            ys[j]      = input_[mids[j]].y;
+            Pin &pin = net.pin(j);
+            mids[j] = pin.moduleId();
+            xs[j] = input_[mids[j]].x;
+            ys[j] = input_[mids[j]].y;
         }
 
-        /* ----- x ------------------------------------------------------- */
         const double xmax = *std::max_element(xs.begin(), xs.end());
         const double xmin = *std::min_element(xs.begin(), xs.end());
 
@@ -179,13 +184,12 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
         double sumEx = 0.0, sumEnx = 0.0;
         for (unsigned j = 0; j < npins; ++j)
         {
-            ex [j] = std::exp((xs[j] - xmax) / alpha_wl);
-            enx[j] = std::exp((xmin - xs[j]) / alpha_wl);
-            sumEx  += ex [j];
+            ex[j] = std::exp((xs[j] - xmax) / kAlpha);
+            enx[j] = std::exp((xmin - xs[j]) / kAlpha);
+            sumEx += ex[j];
             sumEnx += enx[j];
         }
 
-        /* ----- y ------------------------------------------------------- */
         const double ymax = *std::max_element(ys.begin(), ys.end());
         const double ymin = *std::min_element(ys.begin(), ys.end());
 
@@ -193,30 +197,28 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
         double sumEy = 0.0, sumEny = 0.0;
         for (unsigned j = 0; j < npins; ++j)
         {
-            ey [j] = std::exp((ys[j] - ymax) / alpha_wl);
-            eny[j] = std::exp((ymin - ys[j]) / alpha_wl);
-            sumEy  += ey [j];
+            ey[j] = std::exp((ys[j] - ymax) / kAlpha);
+            eny[j] = std::exp((ymin - ys[j]) / kAlpha);
+            sumEy += ey[j];
             sumEny += eny[j];
         }
 
-        /* ----- accumulate module-wise gradient ------------------------- */
         for (unsigned j = 0; j < npins; ++j)
         {
             const unsigned mid = mids[j];
-            grad_wire_[mid].x +=  (ex [j] / sumEx)  - (enx[j] / sumEnx);
-            grad_wire_[mid].y +=  (ey [j] / sumEy)  - (eny[j] / sumEny);
+            grad_wire_[mid].x += ((ex[j] / sumEx) - (enx[j] / sumEnx)) / kAlpha;
+            grad_wire_[mid].y += ((ey[j] / sumEy) - (eny[j] / sumEny)) / kAlpha;
         }
     }
 
-    /* ================================================================== *
-     * 2.  DENSITY  (bell-shaped kernel)                                  *
-     * ================================================================== */
+    // ==================================================================
+    // 2.  DENSITY (bell-shaped kernel)
+    // ==================================================================
 
-    /* ---- 2-a.  constants ­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­­ */
     constexpr int    kBinX   = 64;
     constexpr int    kBinY   = 64;
-    constexpr double kTarget = 0.85;    // target bin utilisation
-    constexpr double kWeight = 1e3;     // λd  – weight in the cost
+    constexpr double kTarget = 0.85;
+    constexpr double kWeight = 1e3;
 
     const double L = placement_.boundryLeft();
     const double R = placement_.boundryRight();
@@ -225,31 +227,27 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
 
     const double binW = (R - L) / kBinX;
     const double binH = (T - B) / kBinY;
-    const double cap  = binW * binH * kTarget;
+    const double binCapacity = binW * binH * kTarget;
 
-    const double supX = 2.0 * binW;     // kernel reach  = 2 bins
+    const double supX = 2.0 * binW;
     const double supY = 2.0 * binH;
 
-    /* ---- 2-b.  helper lambdas (bell and its derivative) -------------- */
-    auto bell = [](double u) -> double
-    {
+    auto bell = [](double u) -> double {
         u = std::fabs(u);
         return (u >= 1.0) ? 0.0 : 0.5 * (1.0 + std::cos(M_PI * u));
     };
-    auto dbell = [](double u) -> double          // d/du of bell(u)
-    {
+    auto dbell = [](double u) -> double {
         if (std::fabs(u) >= 1.0) return 0.0;
         return -0.5 * M_PI * std::sin(M_PI * u);
     };
 
-    /* ---- 2-c.  first pass – accumulate area per bin ------------------- */
     std::vector<std::vector<double>> rho(kBinX, std::vector<double>(kBinY, 0.0));
 
     for (unsigned m = 0; m < placement_.numModules(); ++m)
     {
         Module &mod = placement_.module(m);
-        const double cx   = input_[m].x + 0.5 * mod.width();
-        const double cy   = input_[m].y + 0.5 * mod.height();
+        const double cx = input_[m].x + 0.5 * mod.width();
+        const double cy = input_[m].y + 0.5 * mod.height();
         const double area = mod.area();
 
         const int iLo = std::max(0, int((cx - supX - L) / binW));
@@ -260,15 +258,15 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
         for (int i = iLo; i <= iHi; ++i)
         {
             const double bcX = L + (i + 0.5) * binW;
-            const double ux  = (cx - bcX) / supX;     // normalised distance
-            const double fx  = bell(ux);
+            const double ux = (cx - bcX) / supX;
+            const double fx = bell(ux);
             if (fx == 0.0) continue;
 
             for (int j = jLo; j <= jHi; ++j)
             {
                 const double bcY = B + (j + 0.5) * binH;
-                const double uy  = (cy - bcY) / supY;
-                const double fy  = bell(uy);
+                const double uy = (cy - bcY) / supY;
+                const double fy = bell(uy);
                 if (fy == 0.0) continue;
 
                 rho[i][j] += area * fx * fy;
@@ -276,18 +274,16 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
         }
     }
 
-    /* ---- 2-d.  pre-compute overflow Δ_{ij} ---------------------------- */
     std::vector<std::vector<double>> ov(kBinX, std::vector<double>(kBinY, 0.0));
     for (int i = 0; i < kBinX; ++i)
         for (int j = 0; j < kBinY; ++j)
-            ov[i][j] = std::max(0.0, rho[i][j] - cap);
-const double binCapacity = binW * binH * kTarget;
-    /* ---- 2-e.  second pass – accumulate gradients --------------------- */
+            ov[i][j] = std::max(0.0, rho[i][j] - binCapacity);
+
     for (unsigned m = 0; m < placement_.numModules(); ++m)
     {
-        Module &mod   = placement_.module(m);
-        const double cx   = input_[m].x + 0.5 * mod.width();
-        const double cy   = input_[m].y + 0.5 * mod.height();
+        Module &mod = placement_.module(m);
+        const double cx = input_[m].x + 0.5 * mod.width();
+        const double cy = input_[m].y + 0.5 * mod.height();
         const double area = mod.area();
 
         const int iLo = std::max(0, int((cx - supX - L) / binW));
@@ -300,30 +296,28 @@ const double binCapacity = binW * binH * kTarget;
         for (int i = iLo; i <= iHi; ++i)
         {
             const double bcX = L + (i + 0.5) * binW;
-            const double ux  = (cx - bcX) / supX;
-            const double fx  = bell (ux);
-            const double dfx = dbell(ux) / supX;   // ∂fx/∂x
+            const double ux = (cx - bcX) / supX;
+            const double fx = bell(ux);
+            const double dfx = dbell(ux) / supX;
 
             if (fx == 0.0 && dfx == 0.0) continue;
 
             for (int j = jLo; j <= jHi; ++j)
             {
-                // const double delta = ov[i][j];
-                // if (delta <= 0.0) continue;        // no overflow ⇒ no force
-                const double delta = rho[i][j] - binCapacity;   // signed deviation
-                if (std::fabs(delta) < 1e-12) continue; 
+                const double delta = rho[i][j] - binCapacity;
+                if (std::fabs(delta) < 1e-12) continue;
 
                 const double bcY = B + (j + 0.5) * binH;
-                const double uy  = (cy - bcY) / supY;
-                const double fy  = bell (uy);
-                const double dfy = dbell(uy) / supY; // ∂fy/∂y
+                const double uy = (cy - bcY) / supY;
+                const double fy = bell(uy);
+                const double dfy = dbell(uy) / supY;
 
                 if (fy == 0.0 && dfy == 0.0) continue;
 
-                const double coef = 2.0 * kWeight * delta * area; // d(Δ²)/dΔ
+                const double coef = 2.0 * kWeight * delta * area;
 
-                gx += coef * dfx * fy;   // ∂ρ/∂x = area·dfx·fy
-                gy += coef * fx  * dfy;  // ∂ρ/∂y = area·fx ·dfy
+                gx += coef * dfx * fy;
+                gy += coef * fx * dfy;
             }
         }
 
@@ -331,18 +325,38 @@ const double binCapacity = binW * binH * kTarget;
         grad_density_[m].y += gy;
     }
 
-    //print gradient of density and wirelength
-    printf("grad_density x: %f", grad_density_[0].x);
-    printf(" grad_density y: %f\n", grad_density_[0].y);
-    printf("grad_wire x: %f", grad_wire_[0].x);
-    printf(" grad_wire y: %f\n", grad_wire_[0].y);
-    /* ---- 2-f.  combine gradients ------------------------------------- */
+    // ==================================================================
+    // 3.  COMBINE wirelength and density gradients
+    // ==================================================================
+    const double lambda = 0.2;  // weight for wirelength gradient
+
+    //print the gradient of index 0
+    // printf("grad_wire_[0]: (%.3f, %.3f)\n", grad_wire_[0].x, grad_wire_[0].y);
+    // printf("gard_wire_[1]: (%.3f, %.3f)\n", grad_wire_[1].x, grad_wire_[1].y);
+    // printf("grad_wire_[2]: (%.3f, %.3f)\n", grad_wire_[2].x, grad_wire_[2].y);
+    // printf("grad_density_[0]: (%.3f, %.3f)\n", grad_density_[0].x, grad_density_[0].y);
+    //make the length of all density gradient equal to 100sqrt(2)
     for (unsigned m = 0; m < placement_.numModules(); ++m)
     {
-        grad_[m].x = grad_wire_[m].x + grad_density_[m].x;
-        grad_[m].y = grad_wire_[m].y + grad_density_[m].y;
+        const double length = std::sqrt(grad_density_[m].x * grad_density_[m].x + grad_density_[m].y * grad_density_[m].y);
+        
+        if (length > 1e-12)
+        {
+            grad_density_[m].x *= 1/kAlpha / length;
+            grad_density_[m].y *= 1/kAlpha / length;
+        }
     }
 
+    printf("grad_density_[0]: (%.3f, %.3f)\n", grad_density_[0].x, grad_density_[0].y);
+    printf("grad_wire_[0]: (%.3f, %.3f)\n", grad_wire_[0].x, grad_wire_[0].y);
+    
+    for (unsigned m = 0; m < placement_.numModules(); ++m)
+    {
+        grad_[m].x = lambda * grad_wire_[m].x + grad_density_[m].x;
+        grad_[m].y = lambda * grad_wire_[m].y + grad_density_[m].y;
+    }
+
+    printf("grad_[0]: (%.3f, %.3f)\n", grad_[0].x, grad_[0].y);
 
     return grad_;
 }

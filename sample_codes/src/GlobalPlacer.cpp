@@ -56,7 +56,7 @@ void GlobalPlacer::place() {
 
     // Perform optimization, the termination condition is that the number of iterations reaches 100
     // TODO: You may need to change the termination condition, which is determined by the overflow ratio.
-    for (size_t i = 0; i < 50; ++i) {
+    for (size_t i = 0; i < 20; ++i) {
         optimizer.Step();
         printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(tempPos), tempPos[0].x, tempPos[0].y);
     }
