@@ -31,7 +31,7 @@ public:
      * @brief Perform one optimization step.
      * @return status code (0 = success, >0 = special condition / error).
      */
-    virtual int Step() = 0;
+    virtual double Step() = 0;
 
 protected:
     ///////////////////////////////////
@@ -58,7 +58,7 @@ public:
     // Methods
     ///////////////////////////////////
     void Initialize() override;
-    int  Step()       override;   ///< Now returns status code
+    double  Step()       override;   ///< Now returns status code
 
 private:
     ///////////////////////////////////

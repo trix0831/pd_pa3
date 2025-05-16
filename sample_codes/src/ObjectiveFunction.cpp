@@ -17,7 +17,7 @@ static inline double bell(double u)
     return (u >= 1.0) ? 0.0 : 0.5 * (1.0 + std::cos(M_PI * u));
 }
 
-ExampleFunction::ExampleFunction(Placement &placement) : BaseFunction(1), placement_(placement)
+ExampleFunction::ExampleFunction(Placement &placement, double lambda) : BaseFunction(1), placement_(placement)
 {
     printf("Fetch the information you need from placement database.\n");
     printf("For example:\n");
@@ -328,7 +328,7 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
     // ==================================================================
     // 3.  COMBINE wirelength and density gradients
     // ==================================================================
-    const double lambda = 0.2;  // weight for wirelength gradient
+    // const double lambda = 0.2;  // weight for wirelength gradient
 
     //print the gradient of index 0
     // printf("grad_wire_[0]: (%.3f, %.3f)\n", grad_wire_[0].x, grad_wire_[0].y);
@@ -352,8 +352,8 @@ const std::vector<Point2<double>> &ExampleFunction::Backward()
     
     for (unsigned m = 0; m < placement_.numModules(); ++m)
     {
-        grad_[m].x = lambda * grad_wire_[m].x + grad_density_[m].x;
-        grad_[m].y = lambda * grad_wire_[m].y + grad_density_[m].y;
+        grad_[m].x = grad_wire_[m].x + lambda_* grad_density_[m].x;
+        grad_[m].y = grad_wire_[m].y + lambda_* grad_density_[m].y;
     }
 
     printf("grad_[0]: (%.3f, %.3f)\n", grad_[0].x, grad_[0].y);

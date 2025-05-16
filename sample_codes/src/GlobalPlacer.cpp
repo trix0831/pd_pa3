@@ -30,7 +30,7 @@ void GlobalPlacer::place() {
     // cout << "outline: (" << _placement.boundryLeft() << "," << _placement.boundryBottom() << ") (" << _placement.boundryRight() << "," << _placement.boundryTop() << ")\n";
     // cout << "outline_w=" << outline_w << ", outline_h=" << outline_w << "\n";
     for( size_t i = 0; i < _placement.numModules(); ++i ){
-        Module &module = _placement.module(i);
+        // Module &module = _placement.module(i);
         // int x = rand() % int(outline_w) + _placement.boundryLeft();
         // int y = rand() % int(outline_h) + _placement.boundryBottom();
         // int x = (rand() % int(outline_w))*2/3 + _placement.boundryLeft() + int(outline_w)/6;
@@ -45,7 +45,7 @@ void GlobalPlacer::place() {
     }
     
     // // Optimization variables (in this example, there is only one tempPos)
-    ExampleFunction foo(_placement);                    // Objective function
+    ExampleFunction foo(_placement, 1);       // Objective function, lambda start with 1
     // const double kAlpha = 0.00000000003;                         // Constant step size
     const double kAlpha = 0.000000003;
     SimpleConjugateGradient optimizer(foo, tempPos, kAlpha, _placement);  // Optimizer
@@ -58,11 +58,11 @@ void GlobalPlacer::place() {
 
     // Perform optimization, the termination condition is that the number of iterations reaches 100
     // TODO: You may need to change the termination condition, which is determined by the overflow ratio.
-    int spread = 0;
+    double spread = 0;
     int i = 0;
-    while(!spread) {
+    while(spread < 0.2) {
         spread = optimizer.Step();
-        printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(tempPos), tempPos[0].x, tempPos[0].y);
+        printf("iter = %3u, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(tempPos), tempPos[0].x, tempPos[0].y);
         i++;
     }
 
@@ -78,17 +78,17 @@ void GlobalPlacer::place() {
     ////////////////////////////////////////////////////////////////////
     // Write the placement result into the database. (You may modify this part.)
     ////////////////////////////////////////////////////////////////////
-    size_t fixed_cnt = 0;
+    // size_t fixed_cnt = 0;
     for (size_t i = 0; i < num_modules; i++) {
         // If the module is fixed, its position should not be changed.
         // In this programing assignment, a fixed module may be a terminal or a pre-placed module.
-        if (_placement.module(i).isFixed()) {
-            fixed_cnt++;
-            continue;
-        }
+        // if (_placement.module(i).isFixed()) {
+        //     fixed_cnt++;
+        //     continue;
+        // }
         _placement.module(i).setPosition(tempPos[i].x, tempPos[i].y);
     }
-    printf("INFO: %lu / %lu modules are fixed.\n", fixed_cnt, num_modules);
+    // printf("INFO: %lu / %lu modules are fixed.\n", fixed_cnt, num_modules);
 }
 
 void GlobalPlacer::plotPlacementResult(const string outfilename, bool isPrompt) {

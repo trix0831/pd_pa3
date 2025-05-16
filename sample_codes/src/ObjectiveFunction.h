@@ -1,9 +1,8 @@
-#define _GLIBCXX_USE_CXX11_ABI 0  // Align the ABI version to avoid compatibility issues with `Placment.h`
+#define _GLIBCXX_USE_CXX11_ABI 0
 #ifndef OBJECTIVEFUNCTION_H
 #define OBJECTIVEFUNCTION_H
 
 #include <vector>
-
 #include "Placement.h"
 #include "Point.h"
 
@@ -11,119 +10,93 @@
  * @brief Base class for objective functions
  */
 class BaseFunction {
-   public:
-    /////////////////////////////////
-    // Conssutructors
-    /////////////////////////////////
+public:
+    explicit BaseFunction(std::size_t input_size)
+        : grad_(input_size), value_(0.0) {}
 
-    BaseFunction(const size_t &input_size) : grad_(input_size) {}
+    const std::vector<Point2<double>>& grad() const { return grad_; }
+    const double& value() const { return value_; }
 
-    /////////////////////////////////
-    // Accessors
-    /////////////////////////////////
+    // Virtual interface
+    virtual const double& operator()(const std::vector<Point2<double>>& input) = 0;
+    virtual const std::vector<Point2<double>>& Backward() = 0;
 
-    const std::vector<Point2<double>> &grad() const { return grad_; }
-    const double &value() const { return value_; }
+    // NEW: virtual lambda setter (no-op default)
+    virtual void setLambda(double) {}
 
-    /////////////////////////////////
-    // Methods
-    /////////////////////////////////
-
-    // Forward pass, compute the value of the function
-    virtual const double &operator()(const std::vector<Point2<double>> &input) = 0;
-
-    // Backward pass, compute the gradient of the function
-    virtual const std::vector<Point2<double>> &Backward() = 0;
-
-   protected:
-    /////////////////////////////////
-    // Data members
-    /////////////////////////////////
-
-    std::vector<Point2<double>> grad_;  // Gradient of the function
-    double value_;                      // Value of the function
+protected:
+    std::vector<Point2<double>> grad_;
+    double value_;
 };
 
 /**
  * @brief Example function for optimization
- *
- * This is a simple example function for optimization. The function is defined as:
- *      f(t) = 3*t.x^2 + 2*t.x*t.y + 2*t.y^2 + 7
  */
 class ExampleFunction : public BaseFunction {
-   public:
-    /////////////////////////////////
-    // Constructors
-    /////////////////////////////////
+public:
+    ExampleFunction(Placement& placement, double lambda = 1.0);
 
-    ExampleFunction(Placement &placement);
+    const double& operator()(const std::vector<Point2<double>>& input) override;
+    const std::vector<Point2<double>>& Backward() override;
 
-    /////////////////////////////////
-    // Methods
-    /////////////////////////////////
+    void setLambda(double lambda) override { lambda_ = lambda; }
 
-    const double &operator()(const std::vector<Point2<double>> &input) override;
-    const std::vector<Point2<double>> &Backward() override;
-
-   private:
-    /////////////////////////////////
-    // Data members
-    /////////////////////////////////
-
-    std::vector<Point2<double>> input_;  // Cache the input for backward pass
-    Placement &placement_;
+private:
+    std::vector<Point2<double>> input_;
+    Placement& placement_;
+    double lambda_;
 };
 
 /**
- * @brief Wirelength function
+ * @brief Wirelength function (stub)
  */
 class Wirelength : public BaseFunction {
-    // TODO: Implement the wirelength function, add necessary data members for caching
-   public:
-    /////////////////////////////////
-    // Methods
-    /////////////////////////////////
+public:
+    explicit Wirelength(Placement& pl)
+        : BaseFunction(pl.numModules()), placement_(pl) {}
 
-    const double &operator()(const std::vector<Point2<double>> &input) override;
-    const std::vector<Point2<double>> &Backward() override;
+    const double& operator()(const std::vector<Point2<double>>& input) override;
+    const std::vector<Point2<double>>& Backward() override;
+
+private:
+    Placement& placement_;
 };
 
 /**
- * @brief Density function
+ * @brief Density function (stub)
  */
 class Density : public BaseFunction {
-    // TODO: Implement the density function, add necessary data members for caching
-   public:
-    /////////////////////////////////
-    // Methods
-    /////////////////////////////////
+public:
+    explicit Density(Placement& pl)
+        : BaseFunction(pl.numModules()), placement_(pl) {}
 
-    const double &operator()(const std::vector<Point2<double>> &input) override;
-    const std::vector<Point2<double>> &Backward() override;
+    const double& operator()(const std::vector<Point2<double>>& input) override;
+    const std::vector<Point2<double>>& Backward() override;
+
+private:
+    Placement& placement_;
 };
 
 /**
- * @brief Objective function for global placement
+ * @brief Objective function: wirelength + lambda × density
  */
 class ObjectiveFunction : public BaseFunction {
-    // TODO: Implement the objective function for global placement, add necessary data
-    // members for caching
-    //
-    // Hint: The objetive function of global placement is as follows:
-    //       f(t) = wirelength(t) + lambda * density(t),
-    // where t is the positions of the modules, and lambda is the penalty weight.
-    // You may need an interface to update the penalty weight (lambda) dynamically.
-   public:
-    /////////////////////////////////
-    // Methods
-    /////////////////////////////////
+public:
+    ObjectiveFunction(Placement& pl, double lambda = 1.0)
+        : BaseFunction(pl.numModules()),
+          wirelength_(pl),
+          density_(pl),
+          lambda_(lambda) {}
 
-    const double &operator()(const std::vector<Point2<double>> &input) override;
-    const std::vector<Point2<double>> &Backward() override;
+    const double& operator()(const std::vector<Point2<double>>& input) override;
+    const std::vector<Point2<double>>& Backward() override;
 
-   private:
+    void setLambda(double lambda) override { lambda_ = lambda; }
+
+private:
     Wirelength wirelength_;
     Density density_;
+    double lambda_;
 };
 
 #endif  // OBJECTIVEFUNCTION_H

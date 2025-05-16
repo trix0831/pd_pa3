@@ -23,7 +23,7 @@ void SimpleConjugateGradient::Initialize() {
 /**
  * @details Update the solution once using the conjugate gradient method.
  */
-int SimpleConjugateGradient::Step() {
+double SimpleConjugateGradient::Step() {
     const size_t &kNumModule = var_.size();
 
     // Compute the gradient direction
@@ -75,7 +75,7 @@ int SimpleConjugateGradient::Step() {
         }
     }
 
-    int count = 0;
+    double count = 0;
 
     double outerScale = 0.8;
     double height = placement_.boundryTop()-placement_.boundryBottom();
@@ -108,9 +108,10 @@ int SimpleConjugateGradient::Step() {
     dir_prev_ = dir;
     step_++;
 
-    if (count > kNumModule*0.36){
-        return 1;
-    }else{
-        return 0;
-    };
+    count = (double)count / (double)kNumModule;
+    // the larger lambda is, the more weight on the density
+    obj_.setLambda(1-count);
+    printf("lambda: %f\n", 1-count);
+
+    return count;  // Return the percentage of modules out of bounds
 }
