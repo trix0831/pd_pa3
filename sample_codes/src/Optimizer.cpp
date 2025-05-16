@@ -75,17 +75,42 @@ int SimpleConjugateGradient::Step() {
         }
     }
 
+    int count = 0;
+
+    double outerScale = 0.8;
+    double height = placement_.boundryTop()-placement_.boundryBottom();
+    double width = placement_.boundryRight()-placement_.boundryLeft();
+    // printf("height: %f, width: %f",height, width);`
+
+    double top = placement_.boundryTop() - height*(1-outerScale)/2;
+    double bottom = placement_.boundryBottom() + height*(1-outerScale)/2;
+    double right = placement_.boundryRight() - width*(1-outerScale)/2;
+    double left = placement_.boundryLeft() + width*(1-outerScale)/2;
     
+    // printf("top: %f, bottom: %f, right: %f, left: %f\n", top, bottom, right, left);
+
     // Update the solution
     for (size_t i = 0; i < kNumModule; ++i) {
-        var_[i].x = var_[i].x + 2*x_step_max * dir[i].x;  // Update the variable (solution)
-        var_[i].y = var_[i].y + 2*y_step_max * dir[i].y;
+        var_[i].x = var_[i].x + x_step_max * dir[i].x;  // Update the variable (solution)
+        var_[i].y = var_[i].y + y_step_max * dir[i].y;
+
+        // count how many module out of the outer, which shows the spreading process
+        if (var_[i].x < left || var_[i].x > right || var_[i].y < bottom || var_[i].y > top) {
+            // printf("module[%lu]: (%f,%f) out of bound\n", i, var_[i].x, var_[i].y);
+            count++;
+        }
     }
+
+    printf("out of bound percent: %f\n", (double)count / (double)kNumModule);
 
     // Update the cache for the next iteration
     grad_prev_ = obj_.grad();
     dir_prev_ = dir;
     step_++;
 
-    return 0;
+    if (count > kNumModule*0.36){
+        return 1;
+    }else{
+        return 0;
+    };
 }

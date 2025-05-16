@@ -21,6 +21,8 @@ void GlobalPlacer::place() {
     // If you use other methods, you can skip and delete it directly.
     ////////////////////////////////////////////////////////////////////
     std::vector<Point2<double>> tempPos(_placement.numModules());       
+    _placement.setWidth();
+    _placement.setHeight();
     // randomly initialize the position of the modules
     srand(time(0));
     double outline_w = abs(_placement.boundryRight() - _placement.boundryLeft());
@@ -56,9 +58,12 @@ void GlobalPlacer::place() {
 
     // Perform optimization, the termination condition is that the number of iterations reaches 100
     // TODO: You may need to change the termination condition, which is determined by the overflow ratio.
-    for (size_t i = 0; i < 20; ++i) {
-        optimizer.Step();
+    int spread = 0;
+    int i = 0;
+    while(!spread) {
+        spread = optimizer.Step();
         printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(tempPos), tempPos[0].x, tempPos[0].y);
+        i++;
     }
 
 

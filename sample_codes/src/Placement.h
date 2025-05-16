@@ -41,6 +41,8 @@ public:
     double boundryLeft() {return _boundryLeft;}
     double boundryBottom() {return _boundryBottom;}
     double boundryRight() {return _boundryRight;}
+    double outlineWidth() {return _outlineWidth;}
+    double outlineHeight() {return _outlineHeight;}
 
     /////////////////////////////////////////////
     // operation
@@ -73,6 +75,8 @@ public:
     void setNumNets(unsigned size) {_nets.resize(size);}
     void setNumPins(unsigned size) {_pins.resize(size);}
     void setNumRows(unsigned size) {_rows.resize(size);}
+    void setWidth(){_outlineWidth = _boundryRight-_boundryLeft;}
+    void setHeight(){_outlineHeight = _boundryTop-_boundryBottom;}
 
     void clearModules() {_modules.clear();}
     void clearNets() {_nets.clear();}
@@ -111,6 +115,8 @@ private:
     double _boundryLeft;
     double _boundryBottom;
     double _boundryRight;
+    double _outlineWidth;
+    double _outlineHeight;
 };
 
 #endif // PLACEMENT_H
