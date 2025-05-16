@@ -6,6 +6,7 @@
 #include "Point.h"
 #include <vector>
 #include <cstddef>
+#include "Placement.h"
 
 /**
  * @brief Base class for optimizers
@@ -50,7 +51,8 @@ public:
     ///////////////////////////////////
     SimpleConjugateGradient(BaseFunction               &obj,
                             std::vector<Point2<double>> &var,
-                            const double               &alpha);
+                            const double               &alpha,
+                            Placement                  &placement);
 
     ///////////////////////////////////
     // Methods
@@ -66,6 +68,9 @@ private:
     std::vector<Point2<double>> dir_prev_;   ///< d_{k-1}
     std::size_t                 step_;       ///< Iteration counter
     double                      alpha_;      ///< Initial line-search step
+    Placement                 &placement_;  ///< Placement object
+    double                      x_step_max;
+    double                      y_step_max;
 };
 
 #endif  // OPTIMIZER_H

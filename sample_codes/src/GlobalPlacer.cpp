@@ -31,8 +31,10 @@ void GlobalPlacer::place() {
         Module &module = _placement.module(i);
         // int x = rand() % int(outline_w) + _placement.boundryLeft();
         // int y = rand() % int(outline_h) + _placement.boundryBottom();
-        int x = (rand() % int(outline_w))/3 + _placement.boundryLeft() + int(outline_w)/3;
-        int y = (rand() % int(outline_h))/3 + _placement.boundryBottom() + int(outline_h)/3;
+        // int x = (rand() % int(outline_w))*2/3 + _placement.boundryLeft() + int(outline_w)/6;
+        // int y = (rand() % int(outline_h))*2/3 + _placement.boundryBottom() + int(outline_h)/6;
+        int x = _placement.boundryLeft() + int(outline_w)/2;
+        int y = _placement.boundryBottom() + int(outline_h)/2;
         // module.setPosition(x, y);
         tempPos[i].x = x;
         tempPos[i].y = y;
@@ -42,8 +44,9 @@ void GlobalPlacer::place() {
     
     // // Optimization variables (in this example, there is only one tempPos)
     ExampleFunction foo(_placement);                    // Objective function
-    const double kAlpha = 0.00000000001;                         // Constant step size
-    SimpleConjugateGradient optimizer(foo, tempPos, kAlpha);  // Optimizer
+    // const double kAlpha = 0.00000000003;                         // Constant step size
+    const double kAlpha = 0.000000003;
+    SimpleConjugateGradient optimizer(foo, tempPos, kAlpha, _placement);  // Optimizer
 
     // // Set initial point
     // tempPos[0] = 4.;  // This set both tempPos[0].x and tempPos[0].y to 4.
@@ -53,7 +56,7 @@ void GlobalPlacer::place() {
 
     // Perform optimization, the termination condition is that the number of iterations reaches 100
     // TODO: You may need to change the termination condition, which is determined by the overflow ratio.
-    for (size_t i = 0; i < 300; ++i) {
+    for (size_t i = 0; i < 50; ++i) {
         optimizer.Step();
         printf("iter = %3lu, f = %9.4f, x = %9.4f, y = %9.4f\n", i, foo(tempPos), tempPos[0].x, tempPos[0].y);
     }

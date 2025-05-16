@@ -4,12 +4,16 @@
 
 SimpleConjugateGradient::SimpleConjugateGradient(BaseFunction &obj,
                                                  std::vector<Point2<double>> &var,
-                                                 const double &alpha)
+                                                 const double &alpha,
+                                                 Placement &placement)
     : BaseOptimizer(obj, var),
       grad_prev_(var.size()),
       dir_prev_(var.size()),
       step_(0),
-      alpha_(alpha) {}
+      alpha_(alpha),
+      placement_(placement),
+      x_step_max((placement.boundryRight()-placement.boundryLeft())/50),
+      y_step_max((placement.boundryTop()-placement.boundryBottom())/50){}
 
 void SimpleConjugateGradient::Initialize() {
     // Before the optimization starts, we need to initialize the optimizer.
@@ -62,10 +66,20 @@ int SimpleConjugateGradient::Step() {
     // Step size (alpha) can be optimized dynamically; for now, use a fixed value
     // We can explore line search or dynamic step size in the future
     double step_size = alpha_;  // Fixed step size for now
+    // Make dir[i] a unit vector
+    for (size_t i = 0; i < kNumModule; ++i) {
+        double norm = std::sqrt(dir[i].x * dir[i].x + dir[i].y * dir[i].y);
+        if (norm > 1e-12) {
+            dir[i].x /= norm;
+            dir[i].y /= norm;
+        }
+    }
 
+    
     // Update the solution
     for (size_t i = 0; i < kNumModule; ++i) {
-        var_[i] = var_[i] + step_size * dir[i];  // Update the variable (solution)
+        var_[i].x = var_[i].x + x_step_max * dir[i].x;  // Update the variable (solution)
+        var_[i].y = var_[i].y + y_step_max * dir[i].y;
     }
 
     // Update the cache for the next iteration
